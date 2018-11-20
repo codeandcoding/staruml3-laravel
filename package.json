@@ -1,0 +1,16 @@
+{
+  "name": "cesiztel.helloworld",
+  "title": "Laravel migrations generator",
+  "description": "Extension to generate migrations files based on data model",
+  "version": "1.0.0",
+  "keywords": ["laravel", "generator", "php"],
+  "author": {
+    "name": "Cesar Izquierdo Tello",
+    "email": "cesiztel@gmail.com",
+    "url": "https://github.com/cesiztel"
+  },
+  "license": "MIT",
+  "engines": {
+    "staruml": ">=3.0.0"
+  }
+}

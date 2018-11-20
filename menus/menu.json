@@ -1,0 +1,25 @@
+{
+  "menu": [
+    {
+      "id": "tools",
+      "submenu": [
+        {
+          "label": "Laravel Generator",
+          "id": "tools.laravel.generator",
+          "submenu": [
+            {
+              "label": "Migratons",
+              "id": "tools.laravel.generator.migrations",
+              "command": "laravel_migrations:generate"
+            },
+            {
+              "label": "Models",
+              "id": "tools.laravel.generator.models",
+              "command": "laravel_models:generate"
+            } 
+          ]
+        }
+      ]
+    }
+  ]
+}
