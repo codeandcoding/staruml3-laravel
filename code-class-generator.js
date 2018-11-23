@@ -87,9 +87,11 @@ class CodeBaseClassGenerator {
 
     mainClassCodeBody() {
         let writer = this.writer;
+        let codeGenerator = this;
+
         this.schema.getMethodGenerators().forEach(function (singleMethodGenerator) {
-            this.blockDocs(singleMethodGenerator);
-            this.writeMethod(singleMethodGenerator);
+            codeGenerator.blockDocs(singleMethodGenerator);
+            codeGenerator.writeMethod(singleMethodGenerator);
 
             writer.writeLine('');
         });

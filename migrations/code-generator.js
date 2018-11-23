@@ -98,28 +98,28 @@ class MigrationCodeGenerator {
 
         let className = 'Create' + (tableName.charAt(0).toUpperCase() + tableName.slice(1))  + 'Table';
 
-        let classGenerator = classGenerator.ClassGenerator(className);
-        classGenerator.addImport('Illuminate\\Support\\Facades\\Schema;');
-        classGenerator.addImport('Illuminate\\Database\\Schema\\Blueprint;');
-        classGenerator.addImport('Illuminate\\Database\\Migrations\\Migration;');
-        classGenerator.addExtend('Migration');
+        let generator = new classGenerator.ClassGenerator(className);
+        generator.addImport('Illuminate\\Support\\Facades\\Schema;');
+        generator.addImport('Illuminate\\Database\\Schema\\Blueprint;');
+        generator.addImport('Illuminate\\Database\\Migrations\\Migration;');
+        generator.addExtend('Migration');
 
-        let upMethodGenerator = classGenerator.ClassMethodGenerator('up', 'public', 'Run the migrations.');
+        let upMethodGenerator = new classGenerator.ClassMethodGenerator('up', 'public', 'Run the migrations.');
         upMethodGenerator.addReturn({ "type": "void" });
         upMethodGenerator.setBody(function () {
             classCodeGenerator.generateUpBody(tableName, elem);
         });
 
-        let downMethodGenerator = classGenerator.ClassMethodGenerator('down', 'public', 'Reverse the migrations.');
+        let downMethodGenerator = new classGenerator.ClassMethodGenerator('down', 'public', 'Reverse the migrations.');
         downMethodGenerator.addReturn({ "type": "void" });
         downMethodGenerator.setBody(function () {
             classCodeGenerator.generateDownBody(tableName);
         });
 
-        classGenerator.addMethodGenerator(upMethodGenerator);
-        classGenerator.addMethodGenerator(downMethodGenerator);
+        generator.addMethodGenerator(upMethodGenerator);
+        generator.addMethodGenerator(downMethodGenerator);
 
-        (new codeClassGen.CodeBaseClassGenerator(classGenerator, this.writer)).generate();
+        (new codeClassGen.CodeBaseClassGenerator(generator, this.writer)).generate();
     }
 
     generateUpBody (tableName, elem) {
