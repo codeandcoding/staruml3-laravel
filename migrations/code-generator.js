@@ -26,6 +26,7 @@ const path = require('path');
 const codegen = require('../utils/codegen-utils');
 const fileUtils = require('../utils/file-utils');
 const codeClassGen = require('../code-class-generator');
+const classGenerator = require('../class-generator');
 
 /**
  *  Code Generator
@@ -95,43 +96,30 @@ class MigrationCodeGenerator {
         let tableName = elem.model.name;
         var classCodeGenerator = this;
 
-        var migrationClass = {
-            name: 'Create' + (tableName.charAt(0).toUpperCase() + tableName.slice(1))  + 'Table',
-            uses: [
-                'Illuminate\\Support\\Facades\\Schema;',
-                'Illuminate\\Database\\Schema\\Blueprint;',
-                'Illuminate\\Database\\Migrations\\Migration;'
-            ],
-            methods: [
-                {
-                    'name': 'up',
-                    'scope': 'public',
-                    'description': 'Run the migrations.',
-                    'params': [],
-                    'returns': [{
-                        "type": "void"
-                    }],
-                    body: function () {
-                        classCodeGenerator.generateUpBody(tableName, elem);
-                    }
-                }, 
-                {
-                    'name': 'down',
-                    'scope': 'public',
-                    'description': 'Reverse the migrations.',
-                    'params': [],
-                    'returns': [{
-                        "type": "void"
-                    }],
-                    body: function () {
-                        classCodeGenerator.generateDownBody(tableName);
-                    }
-                }
-            ]
-        };
+        let className = 'Create' + (tableName.charAt(0).toUpperCase() + tableName.slice(1))  + 'Table';
 
-        let codeBaseClassGenerator = new codeClassGen.CodeBaseClassGenerator(migrationClass, 'Migration', this.writer);
-        codeBaseClassGenerator.generate();
+        let classGenerator = classGenerator.ClassGenerator(className);
+        classGenerator.addImport('Illuminate\\Support\\Facades\\Schema;');
+        classGenerator.addImport('Illuminate\\Database\\Schema\\Blueprint;');
+        classGenerator.addImport('Illuminate\\Database\\Migrations\\Migration;');
+        classGenerator.addExtend('Migration');
+
+        let upMethodGenerator = classGenerator.ClassMethodGenerator('up', 'public', 'Run the migrations.');
+        upMethodGenerator.addReturn({ "type": "void" });
+        upMethodGenerator.setBody(function () {
+            classCodeGenerator.generateUpBody(tableName, elem);
+        });
+
+        let downMethodGenerator = classGenerator.ClassMethodGenerator('down', 'public', 'Reverse the migrations.');
+        downMethodGenerator.addReturn({ "type": "void" });
+        downMethodGenerator.setBody(function () {
+            classCodeGenerator.generateDownBody(tableName);
+        });
+
+        classGenerator.addMethodGenerator(upMethodGenerator);
+        classGenerator.addMethodGenerator(downMethodGenerator);
+
+        (new codeClassGen.CodeBaseClassGenerator(classGenerator, this.writer)).generate();
     }
 
     generateUpBody (tableName, elem) {

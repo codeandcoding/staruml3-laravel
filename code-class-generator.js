@@ -32,12 +32,9 @@ class CodeBaseClassGenerator {
     /**
      * @constructor
      */
-    constructor (classConfiguration, extension, writer) {
-        /** @member {string} classConfiguration */
-        this.classConfiguration = classConfiguration;
-
-        /** @member {string} extension */
-        this.extension = extension || null;
+    constructor (schema, writer) {
+        /** @member {string} schema */
+        this.schema = schema;
 
         /** @member {type.CodeWriter} */
         this.writer = writer;
@@ -55,9 +52,11 @@ class CodeBaseClassGenerator {
     }
 
     imports() {
-        for (var i in this.classConfiguration.uses) {
-            this.writer.writeLine('use ' + this.classConfiguration.uses[i]);
-        }
+        let writer = this.writer;
+        this.schema.getImports().forEach(function (singleImport) {
+            writer.writeLine('use ' + singleImport);
+        });
+
         this.writer.writeLine('');
     }
 
@@ -71,48 +70,53 @@ class CodeBaseClassGenerator {
     }
 
     classSignature() {
-        this.writer.writeLine('class ' + this.classConfiguration.name + ' extends ' + this.extension);
+        let classExtends = this.schema.getExtends().join(',');
+        let classImplementation = this.schema.getImplements().join(',');
+
+        let signatureExtras = '';
+        if (classExtends.length > 0) {
+            signatureExtras += ' extends ' + classExtends;
+        }
+
+        if (classImplementation.length > 0) {
+            signatureExtras += ' implements ' + classImplementation;
+        }
+
+        this.writer.writeLine('class ' + this.schema.getName() + signatureExtras);
     }
 
-    blockDocs(methodMetaData) {
+    mainClassCodeBody() {
+        let writer = this.writer;
+        this.schema.getMethodGenerators().forEach(function (singleMethodGenerator) {
+            this.blockDocs(singleMethodGenerator);
+            this.writeMethod(singleMethodGenerator);
+
+            writer.writeLine('');
+        });
+    }
+
+    blockDocs(methodGenerator) {
         this.writer.writeLine ('/**');
-        this.writer.writeLine (' * ' + methodMetaData.description);
+        this.writer.writeLine (' * ' + methodGenerator.getDescription());
         this.writer.writeLine (' *');
-        for (var k in methodMetaData.returnValues) {
-            this.writer.writeLine (' * @return ' + methodMetaData.returnValues[k].type);
-        }
+        let writer = this.writer;
+        methodGenerator.getReturns().forEach(function (singleReturn) {
+            writer.writeLine (' * @return ' + singleReturn.type);
+        });
         this.writer.writeLine ( " */" );
     }
 
-    writeMethod(methodMetaData) {
-        let scope = methodMetaData.scope;
-        let methodName = methodMetaData.name;
-
-        this.writer.writeLine(scope + ' function ' + methodName +'()');
+    writeMethod(methodGenerator) {
+        this.writer.writeLine(methodGenerator.getScope() + ' function ' + methodGenerator.getName() +'()');
         this.writer.writeLine('{');
-        if (methodMetaData.body === null) {
+        if (methodGenerator.getBody() === null) {
             this.writer.indent();
             this.writer.writeLine("// Your code goes here...");
             this.writer.outdent();
         } else {
-            methodMetaData.body();
+            methodGenerator.getBody()();
         }
         this.writer.writeLine('}');
-    }
-
-    mainClassCodeBody() {
-        let genClass = this.classConfiguration;
-
-        let methodLength = genClass.methods.length - 1;
-        let methodCounter = 0;
-        for (var j in genClass.methods) {
-            this.blockDocs(genClass.methods[j]);
-            this.writeMethod(genClass.methods[j]);
-
-            if (methodCounter < methodLength) this.writer.writeLine('');
-
-            methodCounter++;
-        }
     }
 }
 
