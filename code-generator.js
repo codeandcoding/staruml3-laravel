@@ -23,9 +23,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const codegen = require('./codegen-utils');
+const codegen = require('./utils/codegen-utils');
+const fileUtils = require('./utils/file-utils');
 const codeClassGen = require('./code-class-generator');
-const fileUtils = require('./file-utils');
 
 /**
  *  Code Generator
