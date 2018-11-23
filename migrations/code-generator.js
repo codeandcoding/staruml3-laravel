@@ -23,27 +23,31 @@
 
 const fs = require('fs');
 const path = require('path');
-const codegen = require('./utils/codegen-utils');
-const fileUtils = require('./utils/file-utils');
-const codeClassGen = require('./code-class-generator');
+const codegen = require('../utils/codegen-utils');
+const fileUtils = require('../utils/file-utils');
+const codeClassGen = require('../code-class-generator');
 
 /**
  *  Code Generator
  */
-class LaravelMigrationCodeGenerator {
+class MigrationCodeGenerator {
 
     /**
      * @constructor
      *
      * @param {type.UMLPackage} baseModel
      * @param {type.FileManager}
+     * @param {type.CodeWriter}
      */
-    constructor (baseModel, fileManager) {
+    constructor (baseModel, fileManager, writer) {
         /** @member {type.Model} */
         this.baseModel = baseModel;
 
         /** @member {type.FileManager} */
         this.fileManager = fileManager;
+
+        /** @member {type.CodeWriter} */
+        this.writer = writer;
     }
 
     /**
@@ -63,26 +67,32 @@ class LaravelMigrationCodeGenerator {
      * @returns {*}
      */
     generateFileName (elem) {
-        var now = new Date();
-        var terms = [];
+        let now = new Date();
+        let terms = [];
+        let extension = '.php';
+        let tableName = elem.model.name;
 
         terms.push(now.getFullYear());
-        // ("0" + "10").slice(-2) => "10" & ("0" + "9").slice(-2) => "09"
-        terms.push(("0" + (now.getMonth() + 1)).slice(-2));
-        terms.push(("0" + now.getDate()).slice(-2));
-        var time = ("0" + now.getHours()).slice(-2) +
-            ("0" + now.getMinutes()).slice(-2) +
-            ("0" + now.getSeconds()).slice(-2);
+        terms.push(('0' + (now.getMonth() + 1)).slice(-2));
+        terms.push(('0' + now.getDate()).slice(-2));
+        let time = ('0' + now.getHours()).slice(-2) +
+            ('0' + now.getMinutes()).slice(-2) +
+            ('0' + now.getSeconds()).slice(-2);
         terms.push(time);
         terms.push('create');
-        terms.push(elem.model.name);
-        terms.push('table.php');
+        terms.push(tableName);
+        terms.push('table');
 
-        return terms.join("_");
+        return terms.join('_') + extension;
     }
 
-    generateClassCode(codeWriter, elem) {
-        var tableName = elem.model.name;
+    /**
+     * Generates the main code of the class
+     *
+     * @param elem
+     */
+    generateClassCode(elem) {
+        let tableName = elem.model.name;
         var classCodeGenerator = this;
 
         var migrationClass = {
@@ -101,8 +111,8 @@ class LaravelMigrationCodeGenerator {
                     'returns': [{
                         "type": "void"
                     }],
-                    body: function (codeWriter) {
-                        classCodeGenerator.generateUpBody(codeWriter, tableName, elem);
+                    body: function () {
+                        classCodeGenerator.generateUpBody(tableName, elem);
                     }
                 }, 
                 {
@@ -113,28 +123,33 @@ class LaravelMigrationCodeGenerator {
                     'returns': [{
                         "type": "void"
                     }],
-                    body: function (codeWriter) {
-                        classCodeGenerator.generateDownBody(codeWriter, tableName);
+                    body: function () {
+                        classCodeGenerator.generateDownBody(tableName);
                     }
                 }
             ]
         };
 
-        var codeBaseClassGenerator = new codeClassGen.CodeBaseClassGenerator(migrationClass,
-         'Migration');
-        codeBaseClassGenerator.generate(codeWriter);
+        let codeBaseClassGenerator = new codeClassGen.CodeBaseClassGenerator(migrationClass, 'Migration', this.writer);
+        codeBaseClassGenerator.generate();
     }
 
-    generateUpBody (codeWriter, tableName, elem) {
-        codeWriter.writeLine("Schema::create('" + tableName + "', function (Blueprint $table) {");
+    generateUpBody (tableName, elem) {
+        this.writer.indent();
 
-        this.generateTableSchema(codeWriter, elem);
+        this.writer.writeLine("Schema::create('" + tableName + "', function (Blueprint $table) {");
+        this.generateTableSchema(elem);
+        this.writer.writeLine('});');
 
-        codeWriter.writeLine('});');
+        this.writer.outdent();
     }
 
-    generateDownBody (codeWriter, tableName) {
-        codeWriter.writeLine("Schema::dropIfExists('" + tableName + "');");
+    generateDownBody (tableName) {
+        this.writer.indent();
+
+        this.writer.writeLine("Schema::dropIfExists('" + tableName + "');");
+
+        this.writer.outdent();
     }
 
     getMigrationMethodFromType (columnType) {
@@ -163,12 +178,12 @@ class LaravelMigrationCodeGenerator {
      * column definition.
      *
      * @param {type.Model} elem
-     * @param {string} path
-     * @param {Object} options
      */
-    generateTableSchema (codeWriter, elem) {
-        var columns = elem.model.columns;
-        codeWriter.indent();
+    generateTableSchema (elem) {
+        let columns = elem.model.columns;
+
+        this.writer.indent();
+
         for (var i in columns)  {
             var singleColumn = columns[i];
             var columnDefinition = "$table->";
@@ -181,10 +196,11 @@ class LaravelMigrationCodeGenerator {
 
                 columnDefinition  += type + "(" + args +")";
 
-                codeWriter.writeLine(columnDefinition);
+                this.writer.writeLine(columnDefinition);
             }
         }
-        codeWriter.outdent();
+
+        this.writer.outdent();
     }
 
     /**
@@ -195,16 +211,14 @@ class LaravelMigrationCodeGenerator {
      * @param {Object} options
      */
     generate (elem) {
-        var result = new $.Deferred();
-        var filePath, codeWriter, file;
+        let result = new $.Deferred();
+        let filePath;
 
         if (elem instanceof type.ERDEntityView) {
+            this.generateClassCode(elem);
+
             filePath = this.fileManager.getMigrationsFullPath() + '/' + this.generateFileName(elem);
-
-            codeWriter = new codegen.CodeWriter('\t');
-            this.generateClassCode(codeWriter, elem);
-
-            fs.writeFileSync(filePath, codeWriter.getData());
+            fs.writeFileSync(filePath, this.writer.getData());
         } else {
             result.resolve();
         }
@@ -224,7 +238,8 @@ function generate (baseModel, basePath, options) {
     fileManager.prepareMigrationsFolder(
         function () {
             baseModel.ownedViews.forEach(child => {
-                var codeGenerator = new LaravelMigrationCodeGenerator(baseModel, fileManager);
+                let writer = new codegen.CodeWriter('\t');
+                let codeGenerator = new MigrationCodeGenerator(baseModel, fileManager, writer);
 
                 codeGenerator.generate(child);
             });

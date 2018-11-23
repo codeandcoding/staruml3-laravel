@@ -21,7 +21,7 @@
  *
  */
 
-const codeGenerator = require('./code-generator');
+const migrationGenerator = require('./migrations/code-generator');
 
 /**
  * Helper function to return the base model
@@ -65,11 +65,11 @@ function _handleMigrationsGenerate (base, path, options) {
         _getBase(function ({buttonId, returnValue}) {
             if (buttonId === 'ok') {
                 base = returnValue;
-                codeGenerator.generate(base, path, options);
+                migrationGenerator.generate(base, path, options);
             }
         });
     } else {
-        codeGenerator.generate(base, path, options);
+        migrationGenerator.generate(base, path, options);
     }    
 }
 

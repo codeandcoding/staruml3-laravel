@@ -32,90 +32,87 @@ class CodeBaseClassGenerator {
     /**
      * @constructor
      */
-    constructor (classConfiguration, extension) {
+    constructor (classConfiguration, extension, writer) {
         /** @member {string} classConfiguration */
         this.classConfiguration = classConfiguration;
 
         /** @member {string} extension */
         this.extension = extension || null;
+
+        /** @member {type.CodeWriter} */
+        this.writer = writer;
     }
 
-    writeImports(codeWriter) {
+    generate() {
+        this.header();
+        this.imports();
+        this.mainClassCode();
+    }
+
+    header() {
+        this.writer.writeLine('<?php');
+        this.writer.writeLine('');
+    }
+
+    imports() {
         for (var i in this.classConfiguration.uses) {
-            codeWriter.writeLine('use ' + this.classConfiguration.uses[i]);
+            this.writer.writeLine('use ' + this.classConfiguration.uses[i]);
         }
-        codeWriter.writeLine();
+        this.writer.writeLine('');
     }
 
-    writeClassSignature(codeWriter) {
-        codeWriter.writeLine('class ' + this.classConfiguration.name + ' extends ' + this.extension);
+    mainClassCode() {
+        this.classSignature();
+        this.writer.writeLine('{');
+        this.writer.indent();
+        this.mainClassCodeBody();
+        this.writer.outdent();
+        this.writer.writeLine('}');
     }
 
-    writeClass(codeWriter, classBodyWriter) {
-        this.writeClassSignature(codeWriter);
-        codeWriter.writeLine('{');
-        codeWriter.indent();
-
-            classBodyWriter(codeWriter, 
-                this.classConfiguration,
-                this.writeBlockDocs,
-                this.writeMethod);    
-
-        codeWriter.outdent();
-        codeWriter.writeLine('}'); 
+    classSignature() {
+        this.writer.writeLine('class ' + this.classConfiguration.name + ' extends ' + this.extension);
     }
 
-    writeBlockDocs(codeWriter, methodMetaData) {
-        codeWriter.writeLine ('/**');
-        codeWriter.writeLine (' * ' + methodMetaData.description);
-        codeWriter.writeLine (' *');
+    blockDocs(methodMetaData) {
+        this.writer.writeLine ('/**');
+        this.writer.writeLine (' * ' + methodMetaData.description);
+        this.writer.writeLine (' *');
         for (var k in methodMetaData.returnValues) {
-            codeWriter.writeLine (' * @return ' + methodMetaData.returnValues[k].type);
+            this.writer.writeLine (' * @return ' + methodMetaData.returnValues[k].type);
         }
-        codeWriter.writeLine ( " */" );
+        this.writer.writeLine ( " */" );
     }
 
-    writeMethod(codeWriter, methodMetaData) {
-        var description = methodMetaData.description;
-        var scope = methodMetaData.scope;
-        var methodName = methodMetaData.name;
+    writeMethod(methodMetaData) {
+        let scope = methodMetaData.scope;
+        let methodName = methodMetaData.name;
 
-        codeWriter.writeLine(scope + ' function ' + methodName +'()');
-        codeWriter.writeLine('{');
+        this.writer.writeLine(scope + ' function ' + methodName +'()');
+        this.writer.writeLine('{');
         if (methodMetaData.body === null) {
-            codeWriter.indent();
-            codeWriter.writeLine("// Your code goes here...");
-            codeWriter.outdent();
+            this.writer.indent();
+            this.writer.writeLine("// Your code goes here...");
+            this.writer.outdent();
         } else {
-            methodMetaData.body(codeWriter);
+            methodMetaData.body();
         }
-        codeWriter.writeLine('}');
+        this.writer.writeLine('}');
     }
 
-    writeClassBody(codeWriter, classConfiguration, blockDocsWriter, methodWriter) {
-        var genClass = classConfiguration;
+    mainClassCodeBody() {
+        let genClass = this.classConfiguration;
 
-        var methodLength = genClass.methods.length - 1;
-        var methodCounter = 0;
+        let methodLength = genClass.methods.length - 1;
+        let methodCounter = 0;
         for (var j in genClass.methods) {
-            blockDocsWriter(codeWriter, genClass.methods[j]);
-            methodWriter(codeWriter, genClass.methods[j]);
+            this.blockDocs(genClass.methods[j]);
+            this.writeMethod(genClass.methods[j]);
 
-            if (methodCounter < methodLength) codeWriter.writeLine();
+            if (methodCounter < methodLength) this.writer.writeLine('');
 
             methodCounter++;
         }
-    }
-
-    writeHeader(codeWriter) {
-        codeWriter.writeLine('<?php');
-        codeWriter.writeLine();
-    }
-
-    generate(codeWriter) {     
-        this.writeHeader(codeWriter);
-        this.writeImports(codeWriter);
-        this.writeClass(codeWriter, this.writeClassBody);
     }
 }
 
